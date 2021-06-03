@@ -26,9 +26,11 @@ class Category(models.Model):
     name=models.CharField(max_length=32)
 
 class Torrent(models.Model):
+    name=models.CharField(max_length=128)
     time=models.DateTimeField(auto_now_add=True)
     link=models.CharField(max_length=512)
     count=models.IntegerField(default=0)
+    score=models.FloatField(default=0)
     permission=models.IntegerField(validators=[MinValueValidator(0),MaxValueValidator(5)])
     size=models.FloatField()
     uploadUser=models.ForeignKey(User,on_delete=models.SET_NULL,null=True,related_name='uploader')
