@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Add React in One Minute</title>
+  <link rel="stylesheet" type="text/css" href="/static/sugar/style.css">
+</head>
+
+<body>
+
+  <h2>Add React in One Minute</h2>
+  <p>This page demonstrates using React with no build tooling.</p>
+  <p>React is loaded as a script tag.</p>
+
+  <div id="root"></div>
+
+  <!-- Load React. -->
+  <!-- Note: when deploying, replace "development.js" with "production.min.js". -->
+  <script src="/static/pack/react.development.js"></script>
+  <script src="/static/pack/react-dom.development.js"></script>
+  <script src="/static/pack/jquery.js"></script>
+  <!-- Load our React cnent. -->
+  <script src="/static/sugar/like_button.js">
+  </script>
+
+</body>
+
+</html>

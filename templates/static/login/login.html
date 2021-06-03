@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Add React in One Minute</title>
+    <!--
+  <link rel="stylesheet" type="text/css" href="/static/sugar/style.css">
+-->
+</head>
+
+<body>
+
+    <h1 align="center"> btForum </h1>
+
+    <div id="root"></div>
+
+    <!-- Load React. -->
+    <!-- Note: when deploying, replace "development.js" with "production.min.js". -->
+    <script src="/static/pack/react.development.js"></script>
+    <script src="/static/pack/react-dom.development.js"></script>
+    <script src="/static/pack/jquery.js"></script>
+    <!-- Load our React cnent. -->
+    <!--
+    <script src="/static/login/login.js">
+    </script>
+-->
+    <form id="login" onsubmit="return checkForm()" align="center" action="/static/sugar/sugar.html">
+        username: <input type="text" name="username"> <br>
+        password: <input type="password" name="password"> <br>
+        <button type="submit">Submit</button>
+    </form>
+
+    <script>
+        function checkForm() {
+            var username = $("input[name=username]").val();
+            var password = $("input[name=password]").val();
+            console.log("username : " + username);
+            console.log("password : " + password);
+            window.location.href="/static/sugar/sugar.html";
+        }
+    </script>
+
+</body>
+
+</html>
