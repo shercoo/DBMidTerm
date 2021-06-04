@@ -25,19 +25,73 @@
     <script src="/static/login/login.js">
     </script>
 -->
-    <form id="login" onsubmit="return checkForm()" align="center" action="/static/sugar/sugar.html">
+    <form id="login" onsubmit="return checkForm()" align="center">
         username: <input type="text" name="username"> <br>
         password: <input type="password" name="password"> <br>
-        <button type="submit">Submit</button>
+        <div>
+        <button type="submit">登录</button>
+        <button type="button" id="register" onclick="gotoRegister()">注册</button>
+        </div>
     </form>
 
     <script>
+        function gotoRegister() {
+            window.location.href="/static/sugar/sugar.html";
+        }
+
         function checkForm() {
             var username = $("input[name=username]").val();
             var password = $("input[name=password]").val();
-            console.log("username : " + username);
-            console.log("password : " + password);
-            window.location.href="/static/sugar/sugar.html";
+            //console.log("username : " + username);
+            //console.log("password : " + password);
+            //window.location.href="/static/sugar/sugar.html";
+
+            // 发送表单
+            var json = {
+                uname : username,
+                password : password,
+            };
+
+            function ajax(URL, json) {
+                return  promise = new Promise(
+                            function (resolve, reject) {
+                                var xhr = new XMLHttpRequest();
+                                xhr.open("POST", URL, true);
+                                xhr.onload = function() {
+                                    if (xhr.status === 200 ) {
+                                        var resp = JSON.parse(xhr.responseText);
+                                        if (resp.code === 200) {
+                                            resolve(xhr.responseText);
+                                        }
+                                        else {
+                                            reject(new Error(resp.msg));
+                                        }
+                                    }
+                                    else {
+                                        reject(new Error(xhr.statusText));
+                                    }
+                                };
+                                xhr.onerror = function() {
+                                    reject(new Error(xhr.statusText));
+                                };
+                                xhr.send(JSON.stringify(json));
+                            }
+                        )
+            };
+
+            ajax('/login/', json).then(
+                function (content) {
+                    console.log(content);
+                    alert("登录成功");
+                }
+            ).catch(
+                function (err_inf) {
+                    console.log(err_inf.message);
+                    alert("登录失败\n" + err_inf.message);
+                }
+            );
+
+            return false;
         }
     </script>
 
