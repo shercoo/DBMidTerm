@@ -8,6 +8,13 @@ import json
 
 from .models import User, Topic, Category, Torrent, Rate, Reply
 
+CODE = {
+    "success": 200,
+    "database_error": 300,
+    "user_error": 400,
+    "method_error": 600,
+    "parameter_error": 700,
+}
 
 def CookieResponse(dict, uid):
     response = JsonResponse(dict)
@@ -20,6 +27,10 @@ def CookieRedirect(path, uid):
     response.set_signed_cookie('user', uid, max_age=60 * 60 * 12, salt='bt')
     return response
 
+def MessageResponse(msg,dict):
+    dict['msg']=msg
+    return JsonResponse({'code':CODE[msg],'data':dict})
+
 
 def login(request):
     if request.method == 'GET':
@@ -27,29 +38,34 @@ def login(request):
         # template=loader.get_template('btForum/login.html')
         # context={'users':users}
         # return HttpResponse(template.render(context,request))
-        return JsonResponse({'users': list(users.values())})
+        # return JsonResponse({'users': list(users.values())})
+        return MessageResponse('success',{})
     elif request.method == 'POST':
         data = json.loads(request.body)
         name = data['uname']
         password = data['password']
         user = User.objects.get(name=name)
         if user.password == password:
-            return CookieRedirect('/select', user.id)
+            # return CookieRedirect('/select', user.id)
+            return MessageResponse('success',{'uid':user.id})
+        else:
+            return MessageResponse('user_error',{})
 
 
 def select(request):
-    categorys = list(Category.objects.all().values('id'))
-    categorys = [item['id'] for item in categorys]
+    categories = list(Category.objects.all().values('id'))
+    categories = [item['id'] for item in categories]
     uid = request.get_signed_cookie('user', salt='bt')
     user = User.objects.get(id=uid)
     if request.method == 'POST':
         data = json.loads(request.body)
-        categorys = data['categorys']
-    print(categorys)
-    topics = list(Topic.objects.filter(torrent__category__in=categorys).values().distinct())
-    response = JsonResponse({'topics': topics})
-    response.set_signed_cookie('user', uid, max_age=60 * 60 * 12, salt='bt')
-    return response
+        categories = data['categories']
+    print(categories)
+    topics = list(Topic.objects.filter(torrent__category__in=categories).values().distinct())
+    # response = JsonResponse({'topics': topics})
+    # response.set_signed_cookie('user', uid, max_age=60 * 60 * 12, salt='bt')
+    # return response
+    return MessageResponse('success',{'topics': topics,'categories': categories})
 
 
 def torrents(request, torrent_id):
@@ -71,7 +87,8 @@ def torrents(request, torrent_id):
                 user = User.objects.get(uid)
                 user.totDown = user.totDown + torrent.size
                 user.save()
-            return CookieResponse({'result': 'success'}, uid)
+            # return CookieResponse({'result': 'success'}, uid)
+            return MessageResponse('success',{})
 
     rates = Rate.objects.filter(torrent=torrent_id)
     score = rates.aggregate(avg=Avg('score'))['avg']
@@ -88,7 +105,8 @@ def torrents(request, torrent_id):
         'categories': list(Category.objects.filter(torrent=torrent_id).values()),
         'rates': list(rates.values('score', 'content', 'user__name'))
     }
-    return CookieResponse(dict, uid)
+    # return CookieResponse(dict, uid)
+    return MessageResponse('success',dict)
 
 
 def topics(request, topic_id):
@@ -102,7 +120,8 @@ def topics(request, topic_id):
             reply.save()
         elif data['method'] == 'detail':
             torrent_id = data['torrent_id']
-            return CookieRedirect('/torrents/' + str(torrent_id), uid)
+            # return CookieRedirect('/torrents/' + str(torrent_id), uid)
+            return MessageResponse('success',{})
 
     dict = {
         'title': topic.title,
@@ -112,7 +131,8 @@ def topics(request, topic_id):
         'torrents': list(Torrent.objects.filter(inTopics=topic_id,permission__gte=user.privilege).values('id','name', 'score')),
         'replies': list(Reply.objects.filter(topic=topic_id).values('user__name', 'content', 'time'))
     }
-    return CookieResponse(dict, uid)
+    # return CookieResponse(dict, uid)
+    return MessageResponse('success',dict)
 
 
 def upload(request):
@@ -124,9 +144,11 @@ def upload(request):
         torrent.save()
         torrent.category.add(*data['categories'])
         torrent.save()
-        return CookieResponse({'result': 'success'}, uid)
+        # return CookieResponse({'result': 'success'}, uid)
+        return MessageResponse('success', {})
 
-    return CookieResponse({}, uid)
+    # return CookieResponse({}, uid)
+    return MessageResponse('success',{})
 
 
 def post(request):
@@ -138,6 +160,8 @@ def post(request):
         topic.save()
         topic.torrent_set.add(*data['torrent_ids'])
         topic.save()
-        return CookieResponse({'result': 'success'}, uid)
+        return MessageResponse('success', {})
+        # return CookieResponse({'result': 'success'}, uid)
 
-    return CookieResponse({}, uid)
+    # return CookieResponse({}, uid)
+    return MessageResponse('success',{})
