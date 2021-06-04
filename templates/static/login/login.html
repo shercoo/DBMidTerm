@@ -13,8 +13,6 @@
 
     <h1 align="center"> btForum </h1>
 
-    <div id="root"></div>
-
     <!-- Load React. -->
     <!-- Note: when deploying, replace "development.js" with "production.min.js". -->
     <script src="/static/pack/react.development.js"></script>
@@ -26,9 +24,9 @@
     </script>
 -->
     <form id="login" onsubmit="return checkForm()" align="center">
-        username: <input type="text" name="username"> <br>
+        username: <input type="text" name="username" style="margin:10px 0px;"> <br>
         password: <input type="password" name="password"> <br>
-        <div>
+        <div style="margin: 10px;">
         <button type="submit">登录</button>
         <button type="button" id="register" onclick="gotoRegister()">注册</button>
         </div>
