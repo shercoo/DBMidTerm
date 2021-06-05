@@ -73,7 +73,7 @@ def topics(request):
     categories = data['categories']
     page=data['page']
     topics = Topic.objects.filter(torrent__category__name__in=categories).distinct()
-    totPage=(topics.count()-1//5)+1
+    totPage=((topics.count()-1)//5)+1
     topics=list(topics.order_by('time')[(page-1)*5:page*5].values())
     print(categories)
     return MessageResponse('success',{'topics': topics, 'totPage': totPage})
@@ -82,7 +82,8 @@ def topics(request):
 
 @csrf_exempt
 def torrent(request, torrent_id):
-    uid = request.get_signed_cookie('user', salt='bt')
+    # uid = request.get_signed_cookie('user', salt='bt')
+    uid=1
     torrent = Torrent.objects.get(id=torrent_id)
     user = User.objects.get(id=uid)
     if request.method == "POST":
@@ -118,18 +119,19 @@ def torrent(request, torrent_id):
 
 @csrf_exempt
 def topic(request, topic_id):
-    uid = request.get_signed_cookie('user', salt='bt')
+    # uid = request.get_signed_cookie('user', salt='bt')
+    uid=1
     topic = Topic.objects.get(id=topic_id)
     user = User.objects.get(id=uid)
     if request.method == 'POST':
         data = json.loads(request.body)
-        if data['method'] == 'reply':
-            reply = Reply(content=data['content'], user=user, topic=topic)
-            reply.save()
-        elif data['method'] == 'detail':
-            torrent_id = data['torrent_id']
-            # return CookieRedirect('/torrents/' + str(torrent_id), uid)
-            return MessageResponse('success',{})
+        # if data['method'] == 'reply':
+        reply = Reply(content=data['content'], user=user, topic=topic)
+        reply.save()
+        # elif data['method'] == 'detail':
+        #     torrent_id = data['torrent_id']
+        #     # return CookieRedirect('/torrents/' + str(torrent_id), uid)
+        return MessageResponse('success',{})
 
     dict = {
         'title': topic.title,
@@ -145,7 +147,8 @@ def topic(request, topic_id):
 
 @csrf_exempt
 def upload(request):
-    uid = request.get_signed_cookie('user', salt='bt')
+    # uid = request.get_signed_cookie('user', salt='bt')
+    uid=1
     user = User.objects.get(id=uid)
     if request.method == 'POST':
         data = json.loads(request.body)
@@ -162,7 +165,8 @@ def upload(request):
 
 @csrf_exempt
 def post(request):
-    uid = request.get_signed_cookie('user', salt='bt')
+    # uid = request.get_signed_cookie('user', salt='bt')
+    uid=1
     user = User.objects.get(id=uid)
     if request.method == 'POST':
         data = json.loads(request.body)

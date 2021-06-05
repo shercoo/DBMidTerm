@@ -1,6 +1,6 @@
 from django.db import models
 from django.core.validators import MinValueValidator,MaxValueValidator
-from django.db.models.signals import pre_save, pre_delete
+from django.db.models.signals import pre_save, pre_delete, post_save
 from django.dispatch import receiver
 
 # Create your models here.
@@ -72,4 +72,10 @@ def calcTot(sender,instance,**kwargs):
     user.totDown+=torrent.size
     torrent.count+=1
     user.save()
+    torrent.save()
+
+@receiver(post_save,sender=Rate)
+def calcScore(sender,instance,**kwargs):
+    torrent=instance.torrent
+    torrent.score=rateStatistic.objects.get(torrent_id=torrent.id).average
     torrent.save()
