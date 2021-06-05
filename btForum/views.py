@@ -67,14 +67,16 @@ def select(request):
 
 @csrf_exempt
 def topics(request):
-    uid = request.get_signed_cookie('user', salt='bt')
-    user = User.objects.get(id=uid)
-    # if request.method == 'POST':
+    # uid = request.get_signed_cookie('user', salt='bt')
+    # user = User.objects.get(id=uid)
     data = json.loads(request.body)
     categories = data['categories']
+    page=data['page']
+    topics = Topic.objects.filter(torrent__category__name__in=categories).distinct()
+    totPage=(topics.count()-1//5)+1
+    topics=list(topics.order_by('time')[(page-1)*5:page*5].values())
     print(categories)
-    topics = list(Topic.objects.filter(torrent__category__in=categories).values().distinct().order_by('time'))
-    return MessageResponse('success',{'topics': topics})
+    return MessageResponse('success',{'topics': topics, 'totPage': totPage})
 
 
 
