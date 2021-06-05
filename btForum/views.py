@@ -2,6 +2,7 @@ from django.shortcuts import render
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect, JsonResponse
 from django.template import loader
 from django.db.models import Sum, Avg
+from django.views.decorators.csrf import csrf_exempt
 import json
 
 # Create your views here.
@@ -31,7 +32,7 @@ def MessageResponse(msg,dict):
     dict['msg']=msg
     return JsonResponse({'code':CODE[msg],'data':dict})
 
-
+@csrf_exempt
 def login(request):
     if request.method == 'GET':
         users = User.objects.all()
@@ -44,14 +45,18 @@ def login(request):
         data = json.loads(request.body)
         name = data['uname']
         password = data['password']
-        user = User.objects.get(name=name)
-        if user.password == password:
-            return CookieRedirect('/select', user.id)
+        try:
+            user = User.objects.get(name=name)
+            if user.password == password:
+                return CookieRedirect('/select', user.id)
             # return MessageResponse('success',{'uid':user.id})
-        else:
-            return MessageResponse('user_error',{})
+            else:
+                return MessageResponse('user_error', {})
+        except:
+            return MessageResponse('user_error', {})
 
 
+@csrf_exempt
 def select(request):
     categories = list(Category.objects.all().values('name'))
     categories = [item['name'] for item in categories]
@@ -60,6 +65,7 @@ def select(request):
     # return response
     return MessageResponse('success',{'categories': categories})
 
+@csrf_exempt
 def topics(request):
     uid = request.get_signed_cookie('user', salt='bt')
     user = User.objects.get(id=uid)
@@ -72,6 +78,7 @@ def topics(request):
 
 
 
+@csrf_exempt
 def torrent(request, torrent_id):
     uid = request.get_signed_cookie('user', salt='bt')
     torrent = Torrent.objects.get(id=torrent_id)
@@ -107,6 +114,7 @@ def torrent(request, torrent_id):
     return MessageResponse('success',dict)
 
 
+@csrf_exempt
 def topic(request, topic_id):
     uid = request.get_signed_cookie('user', salt='bt')
     topic = Topic.objects.get(id=topic_id)
@@ -133,6 +141,7 @@ def topic(request, topic_id):
     return MessageResponse('success',dict)
 
 
+@csrf_exempt
 def upload(request):
     uid = request.get_signed_cookie('user', salt='bt')
     user = User.objects.get(id=uid)
@@ -149,6 +158,7 @@ def upload(request):
     return MessageResponse('success',{})
 
 
+@csrf_exempt
 def post(request):
     uid = request.get_signed_cookie('user', salt='bt')
     user = User.objects.get(id=uid)
