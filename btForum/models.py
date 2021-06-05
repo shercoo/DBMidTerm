@@ -25,7 +25,7 @@ class Reply(models.Model):
     time=models.DateTimeField(auto_now_add=True)
 
 class Category(models.Model):
-    name=models.CharField(max_length=32,primary_key=True)
+    name=models.CharField(max_length=32)
 
 class Torrent(models.Model):
     name=models.CharField(max_length=128)
