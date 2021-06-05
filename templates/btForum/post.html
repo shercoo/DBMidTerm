@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+<form action="{% url 'post' %}" method="post">
+{% csrf_token %}
+<input id="cookies" type="text" name="cookies" hidden>
+<input style="width: 200px" id="title" name="title"
+       size="16" type="text"
+       placeholder="标题">
+<br>
+<input style="width: 200px" id="content" name="content"
+       size="16" type="text"
+       placeholder="内容">
+
+<button id="login-button" style="margin-right: 20px;margin-left: 20px;"
+        class="btn btn-large" type="submit">登录</button>
+</form>
+
+
+</body>
+</html>

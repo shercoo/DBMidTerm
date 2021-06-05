@@ -6,7 +6,7 @@ import json
 
 # Create your views here.
 
-from .models import User, Topic, Category, Torrent, Rate, Reply
+from .models import User, Topic, Category, Torrent, Rate, Reply,DownloadRecord,rateStatistic
 
 CODE = {
     "success": 200,
@@ -46,29 +46,33 @@ def login(request):
         password = data['password']
         user = User.objects.get(name=name)
         if user.password == password:
-            # return CookieRedirect('/select', user.id)
-            return MessageResponse('success',{'uid':user.id})
+            return CookieRedirect('/select', user.id)
+            # return MessageResponse('success',{'uid':user.id})
         else:
             return MessageResponse('user_error',{})
 
 
 def select(request):
-    categories = list(Category.objects.all().values('id'))
-    categories = [item['id'] for item in categories]
-    uid = request.get_signed_cookie('user', salt='bt')
-    user = User.objects.get(id=uid)
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        categories = data['categories']
-    print(categories)
-    topics = list(Topic.objects.filter(torrent__category__in=categories).values().distinct())
+    categories = list(Category.objects.all().values('name'))
+    categories = [item['name'] for item in categories]
     # response = JsonResponse({'topics': topics})
     # response.set_signed_cookie('user', uid, max_age=60 * 60 * 12, salt='bt')
     # return response
-    return MessageResponse('success',{'topics': topics,'categories': categories})
+    return MessageResponse('success',{'categories': categories})
+
+def topics(request):
+    uid = request.get_signed_cookie('user', salt='bt')
+    user = User.objects.get(id=uid)
+    # if request.method == 'POST':
+    data = json.loads(request.body)
+    categories = data['categories']
+    print(categories)
+    topics = list(Topic.objects.filter(torrent__category__in=categories).values().distinct().order_by('time'))
+    return MessageResponse('success',{'topics': topics})
 
 
-def torrents(request, torrent_id):
+
+def torrent(request, torrent_id):
     uid = request.get_signed_cookie('user', salt='bt')
     torrent = Torrent.objects.get(id=torrent_id)
     user = User.objects.get(id=uid)
@@ -80,27 +84,21 @@ def torrents(request, torrent_id):
 
         elif data['method'] == 'download':
             if uid not in list(torrent.downloadUsers.values('id')):
-                torrent = Torrent.objects.get(torrent_id)
-                torrent.downloadUsers.add(uid)
-                torrent.count = torrent.count + 1
-                torrent.save()
-                user = User.objects.get(uid)
-                user.totDown = user.totDown + torrent.size
-                user.save()
+                downloadRecord=DownloadRecord(user=user,torrent=torrent)
+                downloadRecord.save()
             # return CookieResponse({'result': 'success'}, uid)
             return MessageResponse('success',{})
 
     rates = Rate.objects.filter(torrent=torrent_id)
-    score = rates.aggregate(avg=Avg('score'))['avg']
-    torrent.score = score
-    torrent.save()
+    ratestats=list( rateStatistic.objects.filter(torrent_id=torrent_id).values())
+    print(ratestats)
     dict = {
         'name': torrent.name,
         'link': torrent.link,
         'time': torrent.time,
         'count': torrent.count,
         'size': torrent.size,
-        'score': torrent.score,
+        'ratestats': ratestats,
         'uploadByUser': torrent.uploadUser.name,
         'categories': list(Category.objects.filter(torrent=torrent_id).values()),
         'rates': list(rates.values('score', 'content', 'user__name'))
@@ -109,7 +107,7 @@ def torrents(request, torrent_id):
     return MessageResponse('success',dict)
 
 
-def topics(request, topic_id):
+def topic(request, topic_id):
     uid = request.get_signed_cookie('user', salt='bt')
     topic = Topic.objects.get(id=topic_id)
     user = User.objects.get(id=uid)
