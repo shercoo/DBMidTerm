@@ -204,26 +204,29 @@ def topic(request, topic_id):
         user = User.objects.get(id=uid)
     except:
         return MessageResponse("user_error",{})
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        # if data['method'] == 'reply':
-        reply = Reply(content=data['content'], user=user, topic=topic)
-        reply.save()
-        # elif data['method'] == 'detail':
-        #     torrent_id = data['torrent_id']
-        #     # return CookieRedirect('/torrents/' + str(torrent_id), uid)
-        # return MessageResponse('success',{})
+    try:
+        if request.method == 'POST':
+            data = json.loads(request.body)
+            # if data['method'] == 'reply':
+            reply = Reply(content=data['content'], user=user, topic=topic)
+            reply.save()
+            # elif data['method'] == 'detail':
+            #     torrent_id = data['torrent_id']
+            #     # return CookieRedirect('/torrents/' + str(torrent_id), uid)
+            # return MessageResponse('success',{})
 
-    dict = {
-        'title': topic.title,
-        'content': topic.content,
-        'time': topic.time,
-        'publishedByUser': topic.user.name,
-        'torrents': list(Torrent.objects.filter(inTopics=topic_id,permission__gte=user.privilege).values('id','name', 'score')),
-        'replies': list(Reply.objects.filter(topic=topic_id).order_by('time').values('user__name', 'content', 'time'))
-    }
-    # return CookieResponse(dict, uid)
-    return MessageResponse('success',dict)
+        dict = {
+            'title': topic.title,
+            'content': topic.content,
+            'time': topic.time,
+            'publishedByUser': topic.user.name,
+            'torrents': list(Torrent.objects.filter(inTopics=topic_id,permission__gte=user.privilege).values('id','name', 'score')),
+            'replies': list(Reply.objects.filter(topic=topic_id).order_by('time').values('user__name', 'content', 'time'))
+        }
+        # return CookieResponse(dict, uid)
+        return MessageResponse('success',dict)
+    except:
+        return MessageResponse('method_error',{})
 
 
 @csrf_exempt
@@ -234,27 +237,31 @@ def upload(request):
         user = User.objects.get(id=uid)
     except:
         return MessageResponse("user_error",{})
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        torrent = Torrent(name=data['name'],link=data['link'], permission=6-data['permission'], size=float( data['size']), uploadUser=user)
-        torrent.save()
-        categories=Category.objects.filter(name__in=data['categories']).values('id')
-        categories=[rec['id'] for rec in categories]
-        print(categories)
-        torrent.category.add(*categories)
-        torrent.save()
-        user.totUp+=user.totUp+float(data['size'])
-        user.save()
-        updatePrivilege(user)
-        # return CookieResponse({'result': 'success'}, uid)
-        # return MessageResponse('success', {})
+    try:
+        if request.method == 'POST':
+            data = json.loads(request.body)
+            torrent = Torrent(name=data['name'],link=data['link'], permission=6-data['permission'], size=float( data['size']), uploadUser=user)
+            torrent.save()
+            categories=Category.objects.filter(name__in=data['categories']).values('id')
+            categories=[rec['id'] for rec in categories]
+            print(categories)
+            torrent.category.add(*categories)
+            torrent.save()
+            user.totUp+=user.totUp+float(data['size'])
+            user.save()
+            updatePrivilege(user)
+            # return CookieResponse({'result': 'success'}, uid)
+            # return MessageResponse('success', {})
 
-    categories = list(Category.objects.all().values('name'))
-    categories = [item['name'] for item in categories]
-    # response = JsonResponse({'topics': topics})
-    # response.set_signed_cookie('user', uid, max_age=60 * 60 * 12, salt='bt')
-    # return response
-    return MessageResponse('success',{'categories': categories})
+        categories = list(Category.objects.all().values('name'))
+        categories = [item['name'] for item in categories]
+        # response = JsonResponse({'topics': topics})
+        # response.set_signed_cookie('user', uid, max_age=60 * 60 * 12, salt='bt')
+        # return response
+        return MessageResponse('success',{'categories': categories})
+    except:
+        return MessageResponse('method_error',{})
+
 
 
 @csrf_exempt
@@ -265,15 +272,18 @@ def post(request):
         user = User.objects.get(id=uid)
     except:
         return MessageResponse("user_error",{})
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        topic = Topic(title=data['title'], content=data['content'], user=user)
-        topic.save()
-        torrent_ids=list(map(int,str(data['torrent_ids']).split(',')))
-        topic.torrent_set.add(*torrent_ids)
-        topic.save()
-        return MessageResponse('success', {})
-        # return CookieResponse({'result': 'success'}, uid)
+    try:
+        if request.method == 'POST':
+            data = json.loads(request.body)
+            topic = Topic(title=data['title'], content=data['content'], user=user)
+            topic.save()
+            torrent_ids=list(map(int,str(data['torrent_ids']).split(',')))
+            topic.torrent_set.add(*torrent_ids)
+            topic.save()
+            return MessageResponse('success', {})
+            # return CookieResponse({'result': 'success'}, uid)
 
-    # return CookieResponse({}, uid)
-    return MessageResponse('success',{})
+        # return CookieResponse({}, uid)
+        return MessageResponse('success',{})
+    except:
+        return MessageResponse('method_error',{})
