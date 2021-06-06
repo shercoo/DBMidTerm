@@ -202,7 +202,7 @@ def upload(request):
         return MessageResponse("user_error",{})
     if request.method == 'POST':
         data = json.loads(request.body)
-        torrent = Torrent(link=data['link'], permission=data['permission'], size=float( data['size']), uploadUser=user)
+        torrent = Torrent(name=data['name'],link=data['link'], permission=data['permission'], size=float( data['size']), uploadUser=user)
         torrent.save()
         categories=Category.objects.filter(name__in=data['categories']).values('id')
         categories=[rec['id'] for rec in categories]
