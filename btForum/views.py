@@ -3,11 +3,12 @@ from django.http import HttpRequest, HttpResponse, HttpResponseRedirect, JsonRes
 from django.template import loader
 from django.db.models import Sum, Avg
 from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
 import json
 
 # Create your views here.
 
-from .models import User, Topic, Category, Torrent, Rate, Reply,DownloadRecord,rateStatistic
+from .models import User, Topic, Category, Torrent, Rate, Reply,DownloadRecord,rateStatistic,temp
 
 CODE = {
     "success": 200,
@@ -32,9 +33,38 @@ def MessageResponse(msg,dict):
     dict['msg']=msg
     return JsonResponse({'code':CODE[msg],'data':dict})
 
+def setUid(uid):
+    tmp = temp.objects.first()
+    tmp.uid = uid
+    tmp.save()
+
+def getUid():
+    return temp.objects.first().uid
+
+
+LEVELS=[
+    {"up": 100000000, "ratio": 1},
+    {"up": 100000, "ratio": 0.25},
+    {"up": 3500, "ratio": 0.2},
+    {"up": 200, "ratio": 0.1},
+    {"up": 10, "ratio": 0},
+    {"up": 0, "ratio": 0},
+]
+
+def updatePrivilege(user):
+    up=user.totUp
+    down=user.totDown
+    ratio=up/down if down>0 else 0
+    privilege=user.privilege-1
+    for i in range(privilege,0,-1):
+        if up>=LEVELS[i]["up"] and ratio>=LEVELS[i]["ratio"]:
+            user.privilege=i
+    user.save()
+
 @csrf_exempt
 def login(request):
     if request.method == 'GET':
+        setUid(0)
         users = User.objects.all()
         # template=loader.get_template('btForum/login.html')
         # context={'users':users}
@@ -48,7 +78,9 @@ def login(request):
         try:
             user = User.objects.get(name=name)
             if user.password == password:
-                return CookieRedirect('/select', user.id)
+                setUid(user.id)
+                return MessageResponse('success', {})
+                # return CookieRedirect('/select', user.id)
             # return MessageResponse('success',{'uid':user.id})
             else:
                 return MessageResponse('user_error', {})
@@ -83,21 +115,33 @@ def topics(request):
 @csrf_exempt
 def torrent(request, torrent_id):
     # uid = request.get_signed_cookie('user', salt='bt')
-    uid=1
+    uid=getUid()
     torrent = Torrent.objects.get(id=torrent_id)
-    user = User.objects.get(id=uid)
+    try:
+        user = User.objects.get(id=uid)
+    except:
+        return MessageResponse("user_error",{})
     if request.method == "POST":
         data = json.loads(request.body)
         if data['method'] == 'rate':
-            rate = Rate(content=data['content'], score=data['score'], torrent=torrent, user=user)
-            rate.save()
+            if Rate.objects.filter(user_id=uid,torrent_id=torrent_id).exists():
+                rate=Rate.objects.get(user_id=uid,torrent_id=torrent_id)
+                rate.content=data['content']
+                rate.score=data['score']
+                rate.time=timezone.now()
+                rate.save()
+
+            else:
+                rate = Rate(content=data['content'], score=data['score'], torrent=torrent, user=user)
+                rate.save()
 
         elif data['method'] == 'download':
-            if uid not in list(torrent.downloadUsers.values('id')):
+            if {'id':uid} not in list(torrent.downloadUsers.values('id')):
                 downloadRecord=DownloadRecord(user=user,torrent=torrent)
                 downloadRecord.save()
+                updatePrivilege(user)
             # return CookieResponse({'result': 'success'}, uid)
-            return MessageResponse('success',{})
+            # return MessageResponse('success',{})
 
     rates = Rate.objects.filter(torrent=torrent_id)
     ratestats=list( rateStatistic.objects.filter(torrent_id=torrent_id).values())
@@ -120,9 +164,12 @@ def torrent(request, torrent_id):
 @csrf_exempt
 def topic(request, topic_id):
     # uid = request.get_signed_cookie('user', salt='bt')
-    uid=1
+    uid=getUid()
     topic = Topic.objects.get(id=topic_id)
-    user = User.objects.get(id=uid)
+    try:
+        user = User.objects.get(id=uid)
+    except:
+        return MessageResponse("user_error",{})
     if request.method == 'POST':
         data = json.loads(request.body)
         # if data['method'] == 'reply':
@@ -131,7 +178,7 @@ def topic(request, topic_id):
         # elif data['method'] == 'detail':
         #     torrent_id = data['torrent_id']
         #     # return CookieRedirect('/torrents/' + str(torrent_id), uid)
-        return MessageResponse('success',{})
+        # return MessageResponse('success',{})
 
     dict = {
         'title': topic.title,
@@ -139,7 +186,7 @@ def topic(request, topic_id):
         'time': topic.time,
         'publishedByUser': topic.user.name,
         'torrents': list(Torrent.objects.filter(inTopics=topic_id,permission__gte=user.privilege).values('id','name', 'score')),
-        'replies': list(Reply.objects.filter(topic=topic_id).values('user__name', 'content', 'time'))
+        'replies': list(Reply.objects.filter(topic=topic_id).order_by('time').values('user__name', 'content', 'time'))
     }
     # return CookieResponse(dict, uid)
     return MessageResponse('success',dict)
@@ -148,26 +195,42 @@ def topic(request, topic_id):
 @csrf_exempt
 def upload(request):
     # uid = request.get_signed_cookie('user', salt='bt')
-    uid=1
-    user = User.objects.get(id=uid)
+    uid=getUid()
+    try:
+        user = User.objects.get(id=uid)
+    except:
+        return MessageResponse("user_error",{})
     if request.method == 'POST':
         data = json.loads(request.body)
-        torrent = Torrent(link=data['link'], permission=data['permission'], size=data['size'], uploadUser=user)
+        torrent = Torrent(link=data['link'], permission=data['permission'], size=float( data['size']), uploadUser=user)
         torrent.save()
-        torrent.category.add(*data['categories'])
+        categories=Category.objects.filter(name__in=data['categories']).values('id')
+        categories=[rec['id'] for rec in categories]
+        print(categories)
+        torrent.category.add(*categories)
         torrent.save()
+        user.totUp+=user.totUp+float(data['size'])
+        user.save()
+        updatePrivilege(user)
         # return CookieResponse({'result': 'success'}, uid)
-        return MessageResponse('success', {})
+        # return MessageResponse('success', {})
 
-    # return CookieResponse({}, uid)
-    return MessageResponse('success',{})
+    categories = list(Category.objects.all().values('name'))
+    categories = [item['name'] for item in categories]
+    # response = JsonResponse({'topics': topics})
+    # response.set_signed_cookie('user', uid, max_age=60 * 60 * 12, salt='bt')
+    # return response
+    return MessageResponse('success',{'categories': categories})
 
 
 @csrf_exempt
 def post(request):
     # uid = request.get_signed_cookie('user', salt='bt')
-    uid=1
-    user = User.objects.get(id=uid)
+    uid=getUid()
+    try:
+        user = User.objects.get(id=uid)
+    except:
+        return MessageResponse("user_error",{})
     if request.method == 'POST':
         data = json.loads(request.body)
         topic = Topic(title=data['title'], content=data['content'], user=user)
