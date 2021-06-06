@@ -62,14 +62,20 @@ def updatePrivilege(user):
     user.save()
 
 @csrf_exempt
+def search(request):
+    try:
+        data = json.loads(request.body)
+        topics=Topic.objects.filter(title__contains=data['searchstring'])
+        topics=list(topics.order_by('time').values())[::-1]
+        return MessageResponse('success',{'topics': topics, 'totPage': 1})
+    except:
+        return MessageResponse('method_error',{})
+
+
+@csrf_exempt
 def login(request):
     if request.method == 'GET':
         setUid(0)
-        users = User.objects.all()
-        # template=loader.get_template('btForum/login.html')
-        # context={'users':users}
-        # return HttpResponse(template.render(context,request))
-        # return JsonResponse({'users': list(users.values())})
         return MessageResponse('success',{})
     elif request.method == 'POST':
         data = json.loads(request.body)
@@ -87,6 +93,20 @@ def login(request):
         except:
             return MessageResponse('user_error', {})
 
+@csrf_exempt
+def account(request):
+    uid=getUid()
+    try:
+        user = User.objects.get(id=uid)
+    except:
+        return MessageResponse("user_error",{})
+    return MessageResponse('success',{
+        'name': user.name,
+        'totUp': user.totUp,
+        'totDown': user.totDown,
+        'privilege': user.privilege,
+    })
+
 
 @csrf_exempt
 def select(request):
@@ -99,16 +119,23 @@ def select(request):
 
 @csrf_exempt
 def topics(request):
-    # uid = request.get_signed_cookie('user', salt='bt')
-    # user = User.objects.get(id=uid)
-    data = json.loads(request.body)
-    categories = data['categories']
-    page=data['page']
-    topics = Topic.objects.filter(torrent__category__name__in=categories).distinct()
-    totPage=((topics.count()-1)//5)+1
-    topics=list(topics.order_by('time')[(page-1)*5:page*5].values())
-    print(categories)
-    return MessageResponse('success',{'topics': topics, 'totPage': totPage})
+    try:
+        data = json.loads(request.body)
+        categories = data['categories']
+        page=data['page']
+        print(categories)
+        topics = Topic.objects.filter(torrent__category__name__in=categories).distinct()
+        # topics = Topic.objects.filter(torrent__category__in=[1,2]).distinct()
+        # topics = Topic.objects.filter(torrent__in=[8,9]).distinct()
+        # print(Topic.objects.all().values())
+        # print(topics.values())
+        totPage=((topics.count()-1)//10)+1
+        # topics=list(topics.order_by('time')[(page-1)*10:page*10].values())[::-1]
+        topics=list(topics.order_by('time').values())[::-1]
+        print(categories)
+        return MessageResponse('success',{'topics': topics, 'totPage': totPage})
+    except:
+        return MessageResponse('method_error',{})
 
 
 
@@ -121,44 +148,51 @@ def torrent(request, torrent_id):
         user = User.objects.get(id=uid)
     except:
         return MessageResponse("user_error",{})
-    if request.method == "POST":
-        data = json.loads(request.body)
-        if data['method'] == 'rate':
-            if Rate.objects.filter(user_id=uid,torrent_id=torrent_id).exists():
-                rate=Rate.objects.get(user_id=uid,torrent_id=torrent_id)
-                rate.content=data['content']
-                rate.score=data['score']
-                rate.time=timezone.now()
-                rate.save()
 
-            else:
-                rate = Rate(content=data['content'], score=data['score'], torrent=torrent, user=user)
-                rate.save()
+    try:
+        if request.method == "POST":
+            data = json.loads(request.body)
+            if data['method'] == 'rate':
+                if Rate.objects.filter(user_id=uid,torrent_id=torrent_id).exists():
+                    rate=Rate.objects.get(user_id=uid,torrent_id=torrent_id)
+                    rate.content=data['content']
+                    rate.score=data['score']
+                    rate.time=timezone.now()
+                    rate.save()
 
-        elif data['method'] == 'download':
-            if {'id':uid} not in list(torrent.downloadUsers.values('id')):
-                downloadRecord=DownloadRecord(user=user,torrent=torrent)
-                downloadRecord.save()
-                updatePrivilege(user)
-            # return CookieResponse({'result': 'success'}, uid)
-            # return MessageResponse('success',{})
+                else:
+                    rate = Rate(content=data['content'], score=data['score'], torrent=torrent, user=user)
+                    rate.save()
 
-    rates = Rate.objects.filter(torrent=torrent_id)
-    ratestats=list( rateStatistic.objects.filter(torrent_id=torrent_id).values())
-    print(ratestats)
-    dict = {
-        'name': torrent.name,
-        'link': torrent.link,
-        'time': torrent.time,
-        'count': torrent.count,
-        'size': torrent.size,
-        'ratestats': ratestats,
-        'uploadByUser': torrent.uploadUser.name,
-        'categories': list(Category.objects.filter(torrent=torrent_id).values()),
-        'rates': list(rates.values('score', 'content', 'user__name'))
-    }
-    # return CookieResponse(dict, uid)
-    return MessageResponse('success',dict)
+            elif data['method'] == 'download':
+                if {'id':uid} not in list(torrent.downloadUsers.values('id')):
+                    downloadRecord=DownloadRecord(user=user,torrent=torrent)
+                    downloadRecord.save()
+                    updatePrivilege(user)
+                # return CookieResponse({'result': 'success'}, uid)
+                # return MessageResponse('success',{})
+
+        rates = Rate.objects.filter(torrent=torrent_id)
+        ratestats=[{"minimum":None,"maximum":None,"average":None,"min7":None,"max7":None,"avg7":None}]
+        if rates.exists():
+            ratestats=list( rateStatistic.objects.filter(torrent_id=torrent_id).values())
+        print(rates.values())
+        print(ratestats)
+        dict = {
+            'name': torrent.name,
+            'link': torrent.link,
+            'time': torrent.time,
+            'count': torrent.count,
+            'size': torrent.size,
+            'ratestats': ratestats,
+            'uploadByUser': torrent.uploadUser.name,
+            'categories': list(Category.objects.filter(torrent=torrent_id).values()),
+            'rates': list(rates.values('score', 'content', 'user__name'))
+        }
+        # return CookieResponse(dict, uid)
+        return MessageResponse('success',dict)
+    except:
+        return MessageResponse('method_error',{})
 
 
 @csrf_exempt
@@ -202,7 +236,7 @@ def upload(request):
         return MessageResponse("user_error",{})
     if request.method == 'POST':
         data = json.loads(request.body)
-        torrent = Torrent(name=data['name'],link=data['link'], permission=data['permission'], size=float( data['size']), uploadUser=user)
+        torrent = Torrent(name=data['name'],link=data['link'], permission=6-data['permission'], size=float( data['size']), uploadUser=user)
         torrent.save()
         categories=Category.objects.filter(name__in=data['categories']).values('id')
         categories=[rec['id'] for rec in categories]
@@ -235,7 +269,8 @@ def post(request):
         data = json.loads(request.body)
         topic = Topic(title=data['title'], content=data['content'], user=user)
         topic.save()
-        topic.torrent_set.add(*data['torrent_ids'])
+        torrent_ids=list(map(int,str(data['torrent_ids']).split(',')))
+        topic.torrent_set.add(*torrent_ids)
         topic.save()
         return MessageResponse('success', {})
         # return CookieResponse({'result': 'success'}, uid)
